@@ -1,19 +1,20 @@
 # ==============================
-# Marketing Beast AI v3.0 (PRO)
-# Streamlit + Groq AI
+# Marketing Beast AI v4.0 PRO
+# Streamlit + Groq AI + Image Prompt + History
 # ==============================
 
 import streamlit as st
-from groq import Groq
+from groq import Groq, GroqError
 import os
 import urllib.parse
+import time
 
 # -----------------------------
 # PAGE CONFIG
 # -----------------------------
 st.set_page_config(
-    page_title="Marketing Beast AI v3.0",
-    page_icon="🔥",
+    page_title="Marketing Beast AI v4.0",
+    page_icon="🦁",
     layout="wide"
 )
 
@@ -21,19 +22,24 @@ st.set_page_config(
 # LOAD GROQ API KEY
 # -----------------------------
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-
 if not GROQ_API_KEY:
-    st.error("❌ GROQ_API_KEY not found. Please add it to environment variables.")
+    st.error("❌ GROQ_API_KEY not found. Add it to environment variables.")
     st.stop()
 
 client = Groq(api_key=GROQ_API_KEY)
 
 # -----------------------------
+# HISTORY STORAGE
+# -----------------------------
+if "history" not in st.session_state:
+    st.session_state.history = []
+
+# -----------------------------
 # UI HEADER
 # -----------------------------
 st.markdown("""
-# ⚡ Marketing Beast AI v3.0
-### AI-Powered Content & Visual Strategy
+# 🦁 Marketing Beast AI v4.0
+### AI-Powered Ad Copy & Visual Strategy
 """)
 
 # -----------------------------
@@ -65,16 +71,19 @@ benefits = st.text_area(
 # -----------------------------
 # GENERATE BUTTON
 # -----------------------------
-if st.button("🔥 Generate Pro Ad Copy"):
+if st.button("🔥 Generate Ad Copy & Image Prompt"):
 
-    with st.spinner("🧠 AI is crafting a high-converting ad copy..."):
+    with st.spinner("🧠 AI is crafting your high-converting ad copy..."):
 
-        prompt = f"""
+        # -----------------------------
+        # AD COPY PROMPT
+        # -----------------------------
+        prompt_copy = f"""
 You are a senior digital marketing expert.
 
 Create a HIGH-CONVERTING ad copy with the following structure:
 
-1. BIG BOLD HEADLINE (short & powerful)
+1. BIG BOLD HEADLINE
 2. Emotional hook (2–3 lines)
 3. Pain agitation
 4. Bullet list of benefits
@@ -87,25 +96,62 @@ Product: {product}
 Customer Pain Point: {pain_point}
 Main Benefits: {benefits}
 Affiliate Link: {affiliate_link}
-
-Make it persuasive, emotional and conversion-focused.
 """
 
-        completion = client.chat.completions.create(
-            model="llama3-70b-8192",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.8,
-            max_tokens=700
-        )
+        # -----------------------------
+        # IMAGE PROMPT PROMPT
+        # -----------------------------
+        prompt_image = f"""
+Create a visually stunning, psychological, eye-catching image for AI generation.
+Niche: {niche}, Product: {product}, Style: High conversion ad, inspirational.
+"""
 
-        ad_copy = completion.choices[0].message.content
+        # -----------------------------
+        # Retry mechanism
+        # -----------------------------
+        ad_copy = ""
+        image_prompt = ""
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                completion_copy = client.chat.completions.create(
+                    model="llama3-8b-instant",
+                    messages=[{"role": "user", "content": prompt_copy}],
+                    temperature=0.8,
+                    max_tokens=500
+                )
+                ad_copy = completion_copy.choices[0].message.content
+
+                completion_image = client.chat.completions.create(
+                    model="llama3-8b-instant",
+                    messages=[{"role": "user", "content": prompt_image}],
+                    temperature=0.7,
+                    max_tokens=200
+                )
+                image_prompt = completion_image.choices[0].message.content
+                break
+
+            except GroqError:
+                st.warning(f"Attempt {attempt+1} failed. Retrying...")
+                time.sleep(2)
+        else:
+            st.error("❌ Failed to get a response from Groq API. Check API key or network.")
+            st.stop()
+
+        # -----------------------------
+        # SAVE TO HISTORY
+        # -----------------------------
+        st.session_state.history.append({
+            "product": product,
+            "ad_copy": ad_copy,
+            "image_prompt": image_prompt
+        })
 
     # -----------------------------
-    # OUTPUT
+    # DISPLAY AD COPY
     # -----------------------------
     st.markdown("---")
     st.markdown("## 🚀 Generated Ad Copy")
-
     st.markdown(
         f"""
 <div style="background:#0f172a;padding:25px;border-radius:12px;color:#e5e7eb;font-size:17px;">
@@ -116,15 +162,16 @@ Make it persuasive, emotional and conversion-focused.
     )
 
     # -----------------------------
-    # COPY BUTTON
+    # DISPLAY IMAGE PROMPT
+    # -----------------------------
+    st.markdown("## 🎨 AI Image Prompt")
+    st.info(image_prompt)
+
+    # -----------------------------
+    # COPY & SHARE
     # -----------------------------
     st.code(ad_copy, language="markdown")
-
-    # -----------------------------
-    # SHARE BUTTONS
-    # -----------------------------
     encoded_text = urllib.parse.quote(ad_copy)
-
     fb_url = f"https://www.facebook.com/sharer/sharer.php?u={affiliate_link}&quote={encoded_text}"
     x_url = f"https://twitter.com/intent/tweet?text={encoded_text}"
     li_url = f"https://www.linkedin.com/sharing/share-offsite/?url={affiliate_link}"
@@ -135,6 +182,17 @@ Make it persuasive, emotional and conversion-focused.
 <a href="{x_url}" target="_blank">🐦 X (Twitter)</a> | 
 <a href="{li_url}" target="_blank">💼 LinkedIn</a>
 """, unsafe_allow_html=True)
+
+# -----------------------------
+# HISTORY DISPLAY
+# -----------------------------
+if st.session_state.history:
+    st.markdown("---")
+    st.markdown("## ⏱️ History")
+    for idx, item in enumerate(reversed(st.session_state.history)):
+        st.markdown(f"### {item['product']}")
+        st.code(item['ad_copy'], language="markdown")
+        st.info(item['image_prompt'])
 
 # -----------------------------
 # FOOTER
