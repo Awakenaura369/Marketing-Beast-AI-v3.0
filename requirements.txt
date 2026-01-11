@@ -1,4 +1,5 @@
 streamlit
+groq
 requests
 beautifulsoup4
-groq
+python-dotenv
