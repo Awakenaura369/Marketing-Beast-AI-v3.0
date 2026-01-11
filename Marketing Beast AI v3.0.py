@@ -1,6 +1,5 @@
 # ==============================
-# Marketing Beast AI v4.0 PRO
-# Streamlit + Groq AI + Image Prompt + History
+# Marketing Beast AI v4.0 PRO (FIXED)
 # ==============================
 
 import streamlit as st
@@ -19,11 +18,13 @@ st.set_page_config(
 )
 
 # -----------------------------
-# LOAD GROQ API KEY
+# LOAD API KEY FROM SECRETS (FIXED)
 # -----------------------------
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+# هاد السطر هو اللي كان خاصو يتبدل باش يقرا من الخانة اللي عمرتي
+GROQ_API_KEY = st.secrets.get("GROQ_API_KEY")
+
 if not GROQ_API_KEY:
-    st.error("❌ GROQ_API_KEY not found. Add it to environment variables.")
+    st.error("❌ GROQ_API_KEY not found in Secrets. Please check your Streamlit dashboard.")
     st.stop()
 
 client = Groq(api_key=GROQ_API_KEY)
@@ -75,127 +76,77 @@ if st.button("🔥 Generate Ad Copy & Image Prompt"):
 
     with st.spinner("🧠 AI is crafting your high-converting ad copy..."):
 
-        # -----------------------------
-        # AD COPY PROMPT
-        # -----------------------------
         prompt_copy = f"""
-You are a senior digital marketing expert.
-
-Create a HIGH-CONVERTING ad copy with the following structure:
-
-1. BIG BOLD HEADLINE
-2. Emotional hook (2–3 lines)
-3. Pain agitation
-4. Bullet list of benefits
-5. Strong CTA
-
-Target Platform: {platform}
+You are a senior digital marketing expert. Create a HIGH-CONVERTING ad copy for {platform}.
 Niche: {niche}
-Tone: {tone}
 Product: {product}
-Customer Pain Point: {pain_point}
-Main Benefits: {benefits}
-Affiliate Link: {affiliate_link}
+Tone: {tone}
+Pain Point: {pain_point}
+Benefits: {benefits}
+Link: {affiliate_link}
 """
 
-        # -----------------------------
-        # IMAGE PROMPT PROMPT
-        # -----------------------------
         prompt_image = f"""
-Create a visually stunning, psychological, eye-catching image for AI generation.
-Niche: {niche}, Product: {product}, Style: High conversion ad, inspirational.
+Create a professional AI image generation prompt for: {product}. 
+The style should be {tone} and visually stunning for {platform}.
 """
 
-        # -----------------------------
-        # Retry mechanism
-        # -----------------------------
         ad_copy = ""
         image_prompt = ""
         max_retries = 3
+        
         for attempt in range(max_retries):
             try:
+                # استعملنا موديل أحدث وأكثر استقراراً
                 completion_copy = client.chat.completions.create(
-                    model="llama3-8b-instant",
+                    model="llama-3.3-70b-versatile",
                     messages=[{"role": "user", "content": prompt_copy}],
-                    temperature=0.8,
-                    max_tokens=500
+                    temperature=0.8
                 )
                 ad_copy = completion_copy.choices[0].message.content
 
                 completion_image = client.chat.completions.create(
-                    model="llama3-8b-instant",
+                    model="llama-3.3-70b-versatile",
                     messages=[{"role": "user", "content": prompt_image}],
-                    temperature=0.7,
-                    max_tokens=200
+                    temperature=0.7
                 )
                 image_prompt = completion_image.choices[0].message.content
                 break
 
-            except GroqError:
-                st.warning(f"Attempt {attempt+1} failed. Retrying...")
-                time.sleep(2)
-        else:
-            st.error("❌ Failed to get a response from Groq API. Check API key or network.")
-            st.stop()
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    st.warning(f"Attempt {attempt+1} failed. Retrying...")
+                    time.sleep(2)
+                else:
+                    st.error(f"❌ Error: {str(e)}")
+                    st.stop()
 
-        # -----------------------------
         # SAVE TO HISTORY
-        # -----------------------------
         st.session_state.history.append({
             "product": product,
             "ad_copy": ad_copy,
             "image_prompt": image_prompt
         })
 
-    # -----------------------------
-    # DISPLAY AD COPY
-    # -----------------------------
+    # DISPLAY RESULTS
     st.markdown("---")
     st.markdown("## 🚀 Generated Ad Copy")
-    st.markdown(
-        f"""
-<div style="background:#0f172a;padding:25px;border-radius:12px;color:#e5e7eb;font-size:17px;">
-<pre style="white-space:pre-wrap;">{ad_copy}</pre>
-</div>
-""",
-        unsafe_allow_html=True
-    )
+    st.info(ad_copy)
 
-    # -----------------------------
-    # DISPLAY IMAGE PROMPT
-    # -----------------------------
     st.markdown("## 🎨 AI Image Prompt")
-    st.info(image_prompt)
+    st.success(image_prompt)
 
-    # -----------------------------
-    # COPY & SHARE
-    # -----------------------------
-    st.code(ad_copy, language="markdown")
+    # SHARING LINKS
     encoded_text = urllib.parse.quote(ad_copy)
-    fb_url = f"https://www.facebook.com/sharer/sharer.php?u={affiliate_link}&quote={encoded_text}"
-    x_url = f"https://twitter.com/intent/tweet?text={encoded_text}"
-    li_url = f"https://www.linkedin.com/sharing/share-offsite/?url={affiliate_link}"
-
-    st.markdown("### 🔗 Share this Ad Copy")
-    st.markdown(f"""
-<a href="{fb_url}" target="_blank">📘 Facebook</a> | 
-<a href="{x_url}" target="_blank">🐦 X (Twitter)</a> | 
-<a href="{li_url}" target="_blank">💼 LinkedIn</a>
-""", unsafe_allow_html=True)
+    st.markdown(f"### 🔗 [Share on Facebook](https://www.facebook.com/sharer/sharer.php?u={affiliate_link}&quote={encoded_text})")
 
 # -----------------------------
-# HISTORY DISPLAY
+# HISTORY
 # -----------------------------
 if st.session_state.history:
     st.markdown("---")
     st.markdown("## ⏱️ History")
-    for idx, item in enumerate(reversed(st.session_state.history)):
-        st.markdown(f"### {item['product']}")
-        st.code(item['ad_copy'], language="markdown")
-        st.info(item['image_prompt'])
-
-# -----------------------------
-# FOOTER
-# -----------------------------
-st.markdown("---")
-st.markdown("Built with ❤️ by Marketing Beast AI | Groq + Streamlit")
+    for item in reversed(st.session_state.history):
+        with st.expander(f"Product: {item['product']}"):
+            st.write(item['ad_copy'])
+            st.caption(f"Image Prompt: {item['image_prompt']}")
