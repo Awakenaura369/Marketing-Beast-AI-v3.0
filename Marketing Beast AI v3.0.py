@@ -2,7 +2,7 @@ import streamlit as st
 from groq import Groq
 import os
 import urllib.parse
-from fpdf import FPDF
+from fpdf import FPDF2
 import re
 
 # -----------------------------
