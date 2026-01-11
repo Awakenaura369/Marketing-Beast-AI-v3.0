@@ -3,9 +3,10 @@ from groq import Groq
 import os
 import urllib.parse
 from fpdf import FPDF
+import re
 
 # -----------------------------
-# 📄 PDF CLASS (FIXED & PRO)
+# 📄 PDF & UTILS
 # -----------------------------
 class BeastPDF(FPDF):
     def header(self):
@@ -13,129 +14,136 @@ class BeastPDF(FPDF):
         self.cell(0, 10, "MARKETING BEAST AI - STRATEGY REPORT", align="C", ln=True)
         self.ln(10)
 
+def clean_text_for_pdf(text):
+    """ تنظيف النص من أي رموز تعبيرية أو أحرف غير مدعومة في PDF العادي """
+    # تعويض الرموز التعبيرية بـ [emoji] أو مسحها لتجنب الـ Error
+    return text.encode('ascii', 'ignore').decode('ascii')
+
 def create_pdf(ad_copy, image_prompt, product_name, platform):
     pdf = BeastPDF()
     pdf.add_page()
     
-    # تنظيف النص من الرموز التي تسبب مشاكل في الترميز
-    safe_copy = ad_copy.encode('latin-1', 'replace').decode('latin-1')
-    safe_prompt = image_prompt.encode('latin-1', 'replace').decode('latin-1')
+    # تنظيف النصوص
+    safe_copy = clean_text_for_pdf(ad_copy)
+    safe_prompt = clean_text_for_pdf(image_prompt)
 
+    # معلومات الحملة
     pdf.set_font("helvetica", "B", 12)
     pdf.cell(0, 10, f"Product: {product_name}", ln=True)
     pdf.cell(0, 10, f"Target Platform: {platform}", ln=True)
     pdf.ln(5)
 
+    # قسم الإعلان
     pdf.set_font("helvetica", "B", 14)
-    pdf.cell(0, 10, "🚀 Generated Ad Copy:", ln=True)
+    pdf.cell(0, 10, "Generated Ad Copy:", ln=True)
     pdf.set_font("helvetica", size=11)
     pdf.multi_cell(0, 8, safe_copy)
     pdf.ln(10)
 
+    # قسم وصف الصورة
     pdf.set_font("helvetica", "B", 14)
-    pdf.cell(0, 10, "🎨 AI Image Prompt:", ln=True)
+    pdf.cell(0, 10, "AI Image Prompt:", ln=True)
     pdf.set_font("helvetica", "I", 11)
     pdf.multi_cell(0, 8, safe_prompt)
 
     return pdf.output()
 
 # -----------------------------
-# ⚙️ API SETUP & CONFIG
+# ⚙️ APP CONFIG
 # -----------------------------
 st.set_page_config(page_title="Marketing Beast AI", page_icon="🦁", layout="wide")
 
-# قراءة المفتاح من Secrets
 GROQ_API_KEY = st.secrets.get("GROQ_API_KEY")
 if not GROQ_API_KEY:
-    st.error("❌ GROQ_API_KEY missing in Streamlit Secrets!")
+    st.error("❌ API Key Missing in Secrets!")
     st.stop()
 
 client = Groq(api_key=GROQ_API_KEY)
 
 # -----------------------------
-# 🏰 UI DESIGN
+# 🏰 UI INTERFACE
 # -----------------------------
 st.title("🦁 Marketing Beast AI v4.0 PRO")
-st.markdown("### Powering Your Fiverr Success with Groq Speed")
+st.markdown("### Advanced AI Ad Generator for Fiverr Professionals")
 st.divider()
 
 col1, col2 = st.columns(2, gap="large")
 
 with col1:
-    st.subheader("🎯 Campaign Settings")
-    niche = st.text_input("Niche", "Digital Marketing")
-    product = st.text_input("Product Name", "The Growth Secret")
-    platform = st.selectbox("Platform", ["Facebook Ads", "Instagram Ads", "TikTok Ads", "Email Marketing"])
-    tone = st.select_slider("Tone", options=["Minimal", "Emotional", "Luxury", "Inspirational", "Aggressive"])
+    niche = st.text_input("🎯 Niche", placeholder="e.g., Sustainable Fashion")
+    product = st.text_input("💎 Product Name", placeholder="e.g., Bamboo Hoodie")
+    platform = st.selectbox("📢 Platform", ["Facebook Ads", "Instagram Ads", "TikTok Ads", "Email Marketing"])
+    tone = st.select_slider("🎭 Tone", options=["Minimal", "Emotional", "Luxury", "Inspirational", "Aggressive"])
 
 with col2:
-    st.subheader("💡 Product Details")
-    pain_point = st.text_area("Customer Pain Point")
-    benefits = st.text_area("Key Benefits (comma separated)")
-    link = st.text_input("CTA Link")
+    pain_point = st.text_area("💔 Customer Pain Point", placeholder="What keeps them awake at night?")
+    benefits = st.text_area("🌟 Main Benefits", placeholder="Bullet points of why this is great")
+    link = st.text_input("🔗 CTA Link (Optional)")
 
 # -----------------------------
-# 🔥 MAIN LOGIC
+# 🔥 PROCESS & GENERATE
 # -----------------------------
-if st.button("🔥 GENERATE BEAST STRATEGY"):
-    with st.spinner("🧠 Groq AI is thinking..."):
-        try:
-            model = "llama-3.3-70b-versatile"
-            
-            # 1. Generate Content
-            ad_res = client.chat.completions.create(
-                model=model,
-                messages=[{"role": "user", "content": f"Write high-converting {platform} ad copy for {product}. Tone: {tone}. Pain: {pain_point}. Benefits: {benefits}. CTA: {link}"}]
-            )
-            ad_text = ad_res.choices[0].message.content
-
-            img_res = client.chat.completions.create(
-                model=model,
-                messages=[{"role": "user", "content": f"Create a detailed AI image prompt for {product} on {platform}. Style: {tone}"}]
-            )
-            img_prompt = img_res.choices[0].message.content
-
-            # 2. Display Results
-            st.divider()
-            c1, c2 = st.columns(2)
-            
-            with c1:
-                st.subheader("🚀 Professional Ad Copy")
-                st.write(ad_text)
+if st.button("🔥 GENERATE PROFESSIONAL STRATEGY"):
+    if not pain_point or not product:
+        st.warning("Please fill in the Product Name and Pain Point!")
+    else:
+        with st.spinner("🧠 Beast AI is crafting your content..."):
+            try:
+                model_id = "llama-3.3-70b-versatile"
                 
-            with c2:
-                st.subheader("🎨 AI Image Prompt")
-                st.write(img_prompt)
+                # توليد المحتوى
+                ad_content = client.chat.completions.create(
+                    model=model_id,
+                    messages=[{"role": "user", "content": f"High-converting {platform} ad for {product}. Tone: {tone}. Pain: {pain_point}. Benefits: {benefits}. CTA: {link}"}]
+                ).choices[0].message.content
+
+                img_content = client.chat.completions.create(
+                    model=model_id,
+                    messages=[{"role": "user", "content": f"Detailed AI image prompt for {product} on {platform}. Style: {tone}"}]
+                ).choices[0].message.content
+
+                # العرض
+                st.divider()
+                res_c1, res_c2 = st.columns(2)
                 
-                # Download PDF Button
-                pdf_bytes = create_pdf(ad_text, img_prompt, product, platform)
-                st.download_button(
-                    label="📥 Download Strategy PDF",
-                    data=bytes(pdf_bytes),
-                    file_name=f"Beast_Report_{product}.pdf",
-                    mime="application/pdf"
-                )
+                with res_c1:
+                    st.success("🚀 Ad Copy")
+                    st.write(ad_content)
+                
+                with res_c2:
+                    st.info("🎨 Image Strategy")
+                    st.write(img_content)
+                    
+                    # زر التحميل
+                    pdf_data = create_pdf(ad_content, img_content, product, platform)
+                    st.download_button(
+                        label="📥 Download Delivery PDF",
+                        data=bytes(pdf_data),
+                        file_name=f"Beast_Strategy_{product}.pdf",
+                        mime="application/pdf"
+                    )
 
-            # 3. Share & Utility Buttons
-            st.divider()
-            st.subheader("🔗 Quick Share & Tools")
-            share_col1, share_col2, share_col3 = st.columns(3)
+                # قسم المشاركة والنسخ
+                st.divider()
+                st.subheader("🔗 Share & Copy Tools")
+                s_col1, s_col2, s_col3 = st.columns(3)
 
-            with share_col1:
-                wa_text = f"Check this AI Strategy for {product}: {ad_text[:100]}..."
-                wa_link = f"https://wa.me/?text={urllib.parse.quote(wa_text)}"
-                st.markdown(f'<a href="{wa_link}" target="_blank"><button style="width:100%; border-radius:10px; background-color:#25D366; color:white; border:none; padding:10px; cursor:pointer;">Share on WhatsApp</button></a>', unsafe_allow_html=True)
+                with s_col1:
+                    wa_url = f"https://wa.me/?text={urllib.parse.quote('Check this Ad Strategy: ' + ad_content[:200])}"
+                    st.markdown(f'<a href="{wa_url}" target="_blank"><div style="text-align:center; background-color:#25D366; color:white; padding:10px; border-radius:10px; cursor:pointer;">Share via WhatsApp</div></a>', unsafe_allow_html=True)
 
-            with share_col2:
-                li_link = f"https://www.linkedin.com/sharing/share-offsite/?url={urllib.parse.quote('https://zna3s.streamlit.app')}"
-                st.markdown(f'<a href="{li_link}" target="_blank"><button style="width:100%; border-radius:10px; background-color:#0077B5; color:white; border:none; padding:10px; cursor:pointer;">Share on LinkedIn</button></a>', unsafe_allow_html=True)
+                with s_col2:
+                    li_url = f"https://www.linkedin.com/sharing/share-offsite/?url={urllib.parse.quote('https://zna3s.streamlit.app')}"
+                    st.markdown(f'<a href="{li_url}" target="_blank"><div style="text-align:center; background-color:#0077B5; color:white; padding:10px; border-radius:10px; cursor:pointer;">Share on LinkedIn</div></a>', unsafe_allow_html=True)
 
-            with share_col3:
-                if st.button("📋 Show Copyable Text"):
-                    st.text_area("Select and Copy:", value=ad_text, height=200)
-                    st.success("Text is ready to be copied to your clipboard!")
+                with s_col3:
+                    if st.button("📋 Copy Text to Clipboard"):
+                        st.text_area("Copy from here:", value=ad_content, height=150)
+                        st.info("Select the text above and press Ctrl+C")
 
-        except Exception as e:
-            st.error(f"Error: {e}")
+            except Exception as e:
+                st.error(f"An error occurred: {str(e)}")
 
-st.sidebar.info("🦁 **Marketing Beast AI** is optimized for Fiverr Sellers. Use the PDF report to impress your clients!")
+st.sidebar.markdown("---")
+st.sidebar.write("🦁 **Marketing Beast v4.0 PRO**")
+st.sidebar.caption("Optimized for High-Speed Groq AI")
