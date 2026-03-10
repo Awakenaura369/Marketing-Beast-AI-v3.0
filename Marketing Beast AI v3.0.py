@@ -325,6 +325,49 @@ class BeastPDF(FPDF):
 
 
 def clean_text_for_pdf(text):
+    replacements = {
+        '\u2014': '-',    # em dash —
+        '\u2013': '-',    # en dash -
+        '\u2018': "'",    # left single quote
+        '\u2019': "'",    # right single quote
+        '\u201c': '"',    # left double quote
+        '\u201d': '"',    # right double quote
+        '\u2022': '*',    # bullet point
+        '\u2026': '...', # ellipsis
+        '\u00b7': '*',    # middle dot
+        '\u2010': '-',    # hyphen
+        '\u2011': '-',    # non-breaking hyphen
+        '\u2012': '-',    # figure dash
+        '\u2015': '-',    # horizontal bar
+        '\u00e9': 'e',    # e acute
+        '\u00e8': 'e',    # e grave
+        '\u00ea': 'e',    # e circumflex
+        '\u00e0': 'a',    # a grave
+        '\u00e2': 'a',    # a circumflex
+        '\u00f4': 'o',    # o circumflex
+        '\u00fb': 'u',    # u circumflex
+        '\u00fc': 'u',    # u umlaut
+        '\u00e7': 'c',    # c cedilla
+        '\u2039': '<',    # single left angle quotation
+        '\u203a': '>',    # single right angle quotation
+        '\u00ab': '<<',   # double left angle quotation
+        '\u00bb': '>>',   # double right angle quotation
+        '\u00a9': '(c)',  # copyright
+        '\u00ae': '(R)',  # registered
+        '\u2122': '(TM)', # trademark
+        '\u20ac': 'EUR',  # euro sign
+        '\u00a3': 'GBP',  # pound sign
+        '\u00b0': ' deg', # degree sign
+        '\u00bd': '1/2',  # one half
+        '\u00bc': '1/4',  # one quarter
+        '\u00be': '3/4',  # three quarters
+        '\u2019': "'",    # right single quotation mark
+        '\u0027': "'",    # apostrophe
+        '\u0060': "'",    # grave accent
+    }
+    for char, replacement in replacements.items():
+        text = text.replace(char, replacement)
+    # مسح أي حرف ما زال خارج latin-1
     return text.encode('latin-1', 'replace').decode('latin-1')
 
 
