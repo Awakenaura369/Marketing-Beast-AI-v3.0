@@ -291,84 +291,56 @@ class BeastPDF(FPDF):
         self.set_y(-15)
         self.set_font("helvetica", "I", 8)
         self.set_text_color(120, 120, 120)
-        self.cell(0, 10, f"Beast AI v5.0  |  {self.product}  |  {self.platform}  |  Page {self.page_no()}", align="C")
+        self.cell(0, 10, self.clean(f"Beast AI v5.0  |  {self.product}  |  {self.platform}  |  Page {self.page_no()}"), align="C")
+
+    def clean(self, text):
+        replacements = {
+            '\u2014': '-', '\u2013': '-', '\u2018': "'", '\u2019': "'",
+            '\u201c': '"', '\u201d': '"', '\u2022': '*', '\u2026': '...',
+            '\u00b7': '*', '\u2010': '-', '\u2011': '-', '\u2012': '-',
+            '\u2015': '-', '\u00e9': 'e', '\u00e8': 'e', '\u00ea': 'e',
+            '\u00e0': 'a', '\u00e2': 'a', '\u00f4': 'o', '\u00fb': 'u',
+            '\u00fc': 'u', '\u00e7': 'c', '\u2039': '<', '\u203a': '>',
+            '\u00ab': '<<', '\u00bb': '>>', '\u00a9': '(c)', '\u00ae': '(R)',
+            '\u2122': '(TM)', '\u20ac': 'EUR', '\u00a3': 'GBP',
+            '\u00b0': ' deg', '\u00bd': '1/2', '\u00bc': '1/4', '\u00be': '3/4',
+        }
+        for char, rep in replacements.items():
+            text = text.replace(char, rep)
+        return text.encode('latin-1', 'replace').decode('latin-1')
 
     def section_title(self, title):
         self.set_font("helvetica", "B", 13)
         self.set_text_color(255, 107, 0)
         self.set_fill_color(20, 20, 20)
-        self.cell(0, 10, f"  {title}", ln=True, fill=True)
+        self.cell(0, 10, self.clean(f"  {title}"), ln=True, fill=True)
         self.set_text_color(220, 220, 220)
         self.ln(3)
 
     def body_text(self, text):
         self.set_font("helvetica", size=10)
         self.set_text_color(220, 220, 220)
-        self.multi_cell(0, 6, text)
+        self.multi_cell(0, 6, self.clean(text))
         self.ln(5)
 
     def info_row(self, label, value):
         self.set_font("helvetica", "B", 10)
         self.set_text_color(255, 107, 0)
-        self.cell(45, 8, label + ":", ln=False)
+        self.cell(45, 8, self.clean(label + ":"), ln=False)
         self.set_font("helvetica", size=10)
         self.set_text_color(220, 220, 220)
-        self.cell(0, 8, value, ln=True)
+        self.cell(0, 8, self.clean(value), ln=True)
 
     def kpi_box(self, label, value):
         self.set_font("helvetica", "B", 9)
         self.set_text_color(150, 150, 150)
-        self.cell(45, 6, label.upper(), ln=False)
+        self.cell(45, 6, self.clean(label.upper()), ln=False)
         self.set_font("helvetica", "B", 10)
         self.set_text_color(255, 107, 0)
-        self.cell(0, 6, value, ln=True)
+        self.cell(0, 6, self.clean(value), ln=True)
 
 
-def clean_text_for_pdf(text):
-    replacements = {
-        '\u2014': '-',    # em dash —
-        '\u2013': '-',    # en dash -
-        '\u2018': "'",    # left single quote
-        '\u2019': "'",    # right single quote
-        '\u201c': '"',    # left double quote
-        '\u201d': '"',    # right double quote
-        '\u2022': '*',    # bullet point
-        '\u2026': '...', # ellipsis
-        '\u00b7': '*',    # middle dot
-        '\u2010': '-',    # hyphen
-        '\u2011': '-',    # non-breaking hyphen
-        '\u2012': '-',    # figure dash
-        '\u2015': '-',    # horizontal bar
-        '\u00e9': 'e',    # e acute
-        '\u00e8': 'e',    # e grave
-        '\u00ea': 'e',    # e circumflex
-        '\u00e0': 'a',    # a grave
-        '\u00e2': 'a',    # a circumflex
-        '\u00f4': 'o',    # o circumflex
-        '\u00fb': 'u',    # u circumflex
-        '\u00fc': 'u',    # u umlaut
-        '\u00e7': 'c',    # c cedilla
-        '\u2039': '<',    # single left angle quotation
-        '\u203a': '>',    # single right angle quotation
-        '\u00ab': '<<',   # double left angle quotation
-        '\u00bb': '>>',   # double right angle quotation
-        '\u00a9': '(c)',  # copyright
-        '\u00ae': '(R)',  # registered
-        '\u2122': '(TM)', # trademark
-        '\u20ac': 'EUR',  # euro sign
-        '\u00a3': 'GBP',  # pound sign
-        '\u00b0': ' deg', # degree sign
-        '\u00bd': '1/2',  # one half
-        '\u00bc': '1/4',  # one quarter
-        '\u00be': '3/4',  # three quarters
-        '\u2019': "'",    # right single quotation mark
-        '\u0027': "'",    # apostrophe
-        '\u0060': "'",    # grave accent
-    }
-    for char, replacement in replacements.items():
-        text = text.replace(char, replacement)
-    # مسح أي حرف ما زال خارج latin-1
-    return text.encode('latin-1', 'replace').decode('latin-1')
+
 
 
 def create_pdf(ad_copy, image_prompt, product, platform, tone, strategy_data=None):
@@ -378,7 +350,7 @@ def create_pdf(ad_copy, image_prompt, product, platform, tone, strategy_data=Non
 
     # Campaign Info
     pdf.section_title("CAMPAIGN OVERVIEW")
-    pdf.info_row("Product", clean_text_for_pdf(product))
+    pdf.info_row("Product", product)
     pdf.info_row("Platform", platform)
     pdf.info_row("Tone", tone)
     pdf.ln(5)
@@ -398,21 +370,21 @@ def create_pdf(ad_copy, image_prompt, product, platform, tone, strategy_data=Non
     pdf.ln(5)
 
     # Ad Copy
-    pdf.section_title("GENERATED AD COPY — VARIATION 1")
-    pdf.body_text(clean_text_for_pdf(ad_copy))
+    pdf.section_title("GENERATED AD COPY - 3 VARIATIONS")
+    pdf.body_text(ad_copy)
 
     # Strategy (if available)
     if strategy_data:
         pdf.add_page()
         pdf.section_title("FULL STRATEGY")
-        pdf.body_text(clean_text_for_pdf(strategy_data))
+        pdf.body_text(strategy_data)
 
     # Image Prompt
     pdf.add_page()
     pdf.section_title("AI IMAGE GENERATION PROMPT")
     pdf.set_font("helvetica", "I", 10)
     pdf.set_text_color(180, 220, 180)
-    pdf.multi_cell(0, 6, clean_text_for_pdf(image_prompt))
+    pdf.multi_cell(0, 6, pdf.clean(image_prompt))
 
     # Facebook Specs
     pdf.ln(8)
